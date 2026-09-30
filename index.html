@@ -1,87 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f4f1e8">
-  <title>群岛议会 · 一场海上的策略对决</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="群岛议会首页"><span class="brand-mark">✳</span><span>潮汐<span class="brand-light">桌游社</span></span></a>
-      <div class="top-meta"><span class="live-dot"></span><span>在线对局</span><span class="meta-divider"></span><span class="round-label" id="round-label">大厅</span></div>
-      <button class="help-button" id="help-open" aria-label="查看游戏规则">规则 <span>↗</span></button>
-    </header>
-
-    <section class="lobby" id="lobby">
-      <div class="lobby-copy">
-        <p class="eyebrow"><span>桌游 No. 01</span><span class="eyebrow-line"></span><span>2 位航海家</span></p>
-        <h1>群岛<br><em>议会</em></h1>
-        <p class="lobby-description">海风吹向谁，岛屿就属于谁。派遣船队、筑起灯塔，在六轮航海中赢得群岛的盟约。</p>
-        <div class="feature-list"><span><i>01</i>策略部署</span><span><i>02</i>争夺控制权</span><span><i>03</i>六轮决胜</span></div>
-      </div>
-      <div class="lobby-art" aria-hidden="true">
-        <div class="sun"></div><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="sea-label">SOUTH<br>ARCHIPELAGO <span>24° 18′ N</span></div>
-        <svg class="island-illustration" viewBox="0 0 560 460" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path class="wave wave-a" d="M20 352C91 318 121 394 198 360C275 326 311 383 381 350C451 317 485 341 540 317"/><path class="wave wave-b" d="M0 396C67 363 126 425 199 393C274 360 319 424 390 389C458 356 499 379 560 353"/>
-          <path class="island-shadow" d="M108 286C132 257 159 265 181 248C207 227 232 245 253 226C277 204 301 222 318 214C348 200 363 227 391 225C418 224 439 250 429 270C418 290 397 302 365 305C333 308 310 328 273 319C236 310 211 331 179 319C146 308 93 313 108 286Z"/>
-          <path class="island-land" d="M103 264C127 235 154 244 176 226C202 206 226 223 248 204C272 182 296 200 313 192C343 178 358 205 386 203C413 202 434 228 424 248C413 268 392 280 360 283C328 286 305 306 268 297C231 288 206 309 174 297C141 286 88 291 103 264Z"/>
-          <path class="shore" d="M123 258C146 238 159 251 184 231C205 214 228 230 251 211C274 192 297 207 316 200C342 191 360 214 385 212C404 211 421 229 413 244"/>
-          <path class="palm-trunk" d="M264 202C267 176 262 153 255 134"/><path class="palm-leaf" d="M256 136C244 116 217 111 201 119C224 125 238 135 254 143M257 137C261 113 282 99 302 100C284 115 271 127 259 145M255 138C238 127 220 130 208 143C228 138 242 141 257 148M258 137C276 121 298 125 310 139C291 133 275 140 258 149"/>
-          <path class="palm-trunk palm-trunk-2" d="M323 205C326 187 323 171 318 157"/><path class="palm-leaf" d="M319 159C308 143 290 139 278 145C295 149 308 158 318 165M320 159C327 142 345 134 360 138C344 148 333 157 321 167M319 160C303 153 290 160 284 171C298 165 309 165 321 170M321 159C336 151 350 158 357 169C343 164 331 166 321 172"/>
-          <path class="hut" d="M364 253L379 235L394 253V274H364V253Z"/><path class="hut-roof" d="M359 252L379 229L399 252L395 255L379 238L363 255L359 252Z"/><path class="hut-door" d="M376 260H383V274H376V260Z"/>
-          <circle class="island-flower" cx="155" cy="278" r="3"/><circle class="island-flower" cx="211" cy="277" r="2"/><circle class="island-flower" cx="343" cy="264" r="3"/>
-          <path class="bird" d="M417 141C424 132 431 132 438 141C445 132 452 132 459 141"/><path class="bird bird-2" d="M468 175C474 168 480 168 486 175C492 168 498 168 504 175"/>
-        </svg>
-        <div class="art-caption">THE SOUTHERN ISLES <span>EST. 1842</span></div>
-      </div>
-      <div class="lobby-card">
-        <div class="card-heading"><span class="status-pip"></span><span>开一桌新游戏</span><span class="card-step">1 / 2</span></div>
-        <label class="field-label" for="player-name">你的航海家名字</label>
-        <input id="player-name" class="text-input" maxlength="14" placeholder="例如：海盐柠檬" autocomplete="nickname">
-        <button class="primary-button" id="create-room"><span>创建房间</span><span class="button-arrow">↗</span></button>
-        <div class="or-divider"><span>或者加入朋友的房间</span></div>
-        <div class="join-row"><input id="room-code" class="text-input code-input" maxlength="6" placeholder="输入 6 位房间号" autocomplete="off"><button class="join-button" id="join-room">加入 <span>→</span></button></div>
-        <p class="lobby-hint"><span>♧</span> 把房间号分享给朋友，等他上船后就能开局。</p>
-      </div>
-      <div class="lobby-foot"><span>一场游戏约 12 分钟</span><span>·</span><span>无需下载，浏览器即玩</span><span class="lobby-foot-right">DESIGNED FOR GOOD COMPANY</span></div>
-    </section>
-
-    <section class="game hidden" id="game">
-      <aside class="side-panel left-panel">
-        <div class="panel-kicker">航海家 A</div>
-        <div class="player-card player-a" id="player-card-0"><div class="player-avatar">✦</div><div class="player-info"><strong id="player-name-0">等待中</strong><span>青绿舰队</span></div><div class="turn-indicator" id="turn-0">回合</div><div class="player-score"><b id="score-0">0</b><small>胜利点</small></div></div>
-        <div class="resource-card"><div class="resource-row"><span>◉ 可用船队</span><strong id="fleets-0">0</strong></div><div class="resource-row"><span>● 金币</span><strong id="coins-0">0</strong></div><div class="resource-note">每轮结束后补充船队与金币</div></div>
-        <div class="island-legend"><div class="panel-kicker">岛屿情报</div><div class="legend-row"><span class="legend-dot teal"></span><span>青绿舰队控制</span></div><div class="legend-row"><span class="legend-dot coral"></span><span>珊瑚舰队控制</span></div><div class="legend-row"><span class="legend-dot neutral"></span><span>尚无控制者</span></div></div>
-        <div class="panel-note">“航海不是要占领<br>每一座岛，而是懂得<br>哪一座值得守护。”</div>
-      </aside>
-      <div class="board-column">
-        <div class="board-topline"><div><span class="eyebrow-small">南方群岛 · 海图 01</span><h2 id="board-heading">等待第二位玩家登船</h2></div><div class="round-stamp"><span>回合</span><b id="round-number">—</b><small>/ 6</small></div></div>
-        <div class="board" id="board">
-          <div class="compass"><span>N</span><div>✥</div><span>S</span></div><svg class="routes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M50 16L21 39L33 70L68 70L78 39L50 16M21 39L78 39M33 70L50 16M68 70L21 39"/></svg>
-          <div class="island-node" data-island="pearl"><div class="island-islet"><span>✦</span><div class="fleet-stack"></div></div><div class="island-name">珍珠港</div><div class="island-points">3 <small>胜利点</small></div><div class="fort-mark"></div></div>
-          <div class="island-node" data-island="mango"><div class="island-islet"><span>◈</span><div class="fleet-stack"></div></div><div class="island-name">芒果岛</div><div class="island-points">2 <small>胜利点</small></div><div class="fort-mark"></div></div>
-          <div class="island-node" data-island="coral"><div class="island-islet"><span>❋</span><div class="fleet-stack"></div></div><div class="island-name">珊瑚礁</div><div class="island-points">2 <small>胜利点</small></div><div class="fort-mark"></div></div>
-          <div class="island-node" data-island="turtle"><div class="island-islet"><span>⬟</span><div class="fleet-stack"></div></div><div class="island-name">龟背岛</div><div class="island-points">3 <small>胜利点</small></div><div class="fort-mark"></div></div>
-          <div class="island-node" data-island="lighthouse"><div class="island-islet"><span>⌂</span><div class="fleet-stack"></div></div><div class="island-name">灯塔岛</div><div class="island-points">3 <small>胜利点</small></div><div class="fort-mark"></div></div>
-          <div class="board-coast coast-left">PACIFIC<br>OCEAN</div><div class="board-coast coast-right">THE<br>ARCHIPELAGO</div><div class="map-scale">0 ───── 120 海里</div>
-          <div class="island-tooltip" id="island-tooltip">选择一座岛屿查看情报</div>
-        </div>
-        <div class="action-bar"><div class="action-meta"><span class="action-turn" id="action-turn">等待对手</span><span class="actions-left" id="actions-left">—</span></div><div class="action-buttons"><button class="action-button sail-action" id="sail-action" disabled><span>⚑</span><b>派遣船队</b><small>部署一支船队</small></button><button class="action-button fortify-action" id="fortify-action" disabled><span>⌂</span><b>建造灯塔</b><small>花费 3 金币 · 守势 +2</small></button></div></div>
-      </div>
-      <aside class="side-panel right-panel"><div class="panel-kicker">航海家 B</div><div class="player-card player-b" id="player-card-1"><div class="player-avatar">✦</div><div class="player-info"><strong id="player-name-1">等待中</strong><span>珊瑚舰队</span></div><div class="turn-indicator" id="turn-1">回合</div><div class="player-score"><b id="score-1">0</b><small>胜利点</small></div></div><div class="resource-card"><div class="resource-row"><span>◉ 可用船队</span><strong id="fleets-1">0</strong></div><div class="resource-row"><span>● 金币</span><strong id="coins-1">0</strong></div><div class="resource-note">控制岛屿，回合结束时得分</div></div><div class="room-card"><div class="panel-kicker">你的房间号</div><div class="room-code-display" id="room-display">------</div><button class="share-button" id="copy-room">复制房间号 <span>▢</span></button></div><div class="log-card"><div class="panel-kicker">航海日志 <span>最近记录</span></div><div class="log-list" id="log-list"></div></div></aside>
-    </section>
-    <footer class="site-footer"><span>潮汐桌游社 <span class="footer-sep">/</span> 群岛议会</span><span>一场好玩的游戏，从一张海图开始。</span><span>规则 v1.0 <span class="footer-sep">·</span> <button id="help-open-bottom">查看规则</button></span></footer>
-  </main>
-  <div class="toast" id="toast" role="status"></div>
-  <div class="modal hidden" id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title"><div class="modal-backdrop" id="modal-close-backdrop"></div><div class="modal-card"><button class="modal-close" id="modal-close" aria-label="关闭">×</button><p class="eyebrow-small">HOW TO PLAY</p><h2 id="rules-title">在六轮内，<br>赢得群岛的盟约。</h2><div class="rule-item"><span>01</span><div><b>每回合三次行动</b><p>轮到你时，可以派遣船队前往任意一座岛，也可以在有己方船队的岛上建造灯塔。</p></div></div><div class="rule-item"><span>02</span><div><b>夺取岛屿控制权</b><p>船队力量为 1，灯塔提供额外 2 点守势。力量较高的一方控制该岛；平手时无人控制。</p></div></div><div class="rule-item"><span>03</span><div><b>控制岛屿，获取胜利点</b><p>每轮结束时，按所控制岛屿上的数字得分。六轮后得分较高者获胜。珍珠港、龟背岛和灯塔岛分值最高。</p></div></div><div class="rules-foot"><span>金币每轮 +3</span><span>船队每轮 +2</span><span>灯塔造价 3 金币</span></div></div></div>
-  <div class="modal hidden" id="end-modal" role="dialog" aria-modal="true"><div class="modal-backdrop"></div><div class="modal-card end-card"><p class="eyebrow-small">THE VOYAGE IS OVER</p><div class="end-ornament">✳</div><h2 id="end-title">群岛已有新主人</h2><p id="end-copy"></p><button class="primary-button" id="rematch-button"><span>再开一局</span><span class="button-arrow">↻</span></button></div></div>
-  <script src="app.js"></script>
-</body>
-</html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#162923"><title>新岸宪章 · 群岛拓荒</title><link rel="stylesheet" href="game.css"></head>
+<body><main class="shell"><header class="topbar"><a class="brand" href="#"><span class="brand-mark">✳</span><span>新岸宪章 <small>群岛拓荒</small></span></a><div class="top-meta"><i></i>在线对局 <b id="round-label">大厅</b></div><button class="help-button" id="help-open">玩法说明</button></header>
+<section class="lobby" id="lobby"><div class="lobby-art"><div class="sun"></div><div class="archipelago">群 岛<br><em>新 生</em></div><p>风暴退去后的第一个春天，旧世界的航图只剩一片空白。</p></div><div class="lobby-card"><p class="kicker">THE NEW SHORE CHARTER · 01</p><h1>谁来决定<br>群岛的未来？</h1><p>采集木材、石料、食物与知识，在无人海域建立自己的领地。发展生产引擎，争夺关键土地，用不同道路赢得议会。</p><label for="player-name">你的拓荒者名字</label><input id="player-name" maxlength="14" placeholder="例如：林间造物者"><button class="primary" id="create-room">创建新航程 <span>↗</span></button><div class="join"><input id="room-code" maxlength="6" placeholder="六位房间号"><button id="join-room">加入朋友 →</button></div><small>双人在线 · 约 20 分钟 · 无需下载</small></div></section>
+<section class="game hidden" id="game"><div class="step-hint" id="step-hint"><span class="hint-icon">✦</span><div><strong id="step-title">拓荒指引</strong><span id="step-copy">准备开始</span></div><b id="step-badge">准备中</b></div>
+<aside class="player-panel"><div class="player-head"><div class="avatar teal">A</div><div><strong id="player-name-0">拓荒者A</strong><small>青绿议会</small></div><span class="turn" id="turn-0">待命</span></div><div class="resources"><div><i>●</i>金币<strong id="coins-0">0</strong></div><div><i>♧</i>木材<strong id="wood-0">0</strong></div><div><i>⬟</i>石料<strong id="stone-0">0</strong></div><div><i>≈</i>食物<strong id="food-0">0</strong></div><div><i>⌘</i>知识<strong id="knowledge-0">0</strong></div></div><h3>发展轨道</h3><div class="track"><span>群岛影响力</span><b id="prestige-0">0 / 12</b><div><i id="prestige-bar-0"></i></div></div><div class="track nature"><span>生态复兴</span><b id="ecology-0">0 / 10</b><div><i id="ecology-bar-0"></i></div></div><div class="track"><span>控制领土</span><b id="territory-0">0 / 9</b><div><i id="territory-bar-0"></i></div></div><div class="engine"><h3>行动牌轮转</h3><div id="action-row-0"></div><small>牌越靠右，行动强度越高。每次使用后移到队尾。</small></div></aside>
+<section class="center"><div class="board-head"><div><span class="kicker">北方海域 · 新岸测绘</span><h2 id="board-heading">等待另一位拓荒者</h2></div><div class="round"><small>航程</small><b id="round-number">—</b><span>/ 8</span></div></div><div class="map-wrap"><div class="map" id="map" aria-label="群岛领土地图"></div><div class="map-legend"><span>♧ 木林</span><span>⬟ 石台</span><span>≈ 滩涂</span><span>⌘ 遗址</span><span>✦ 已选中</span></div></div><div class="action-panel"><div class="action-status"><strong id="action-turn">等待玩家</strong><span id="actions-left"></span></div><div class="action-grid"><button class="action" data-action="gather"><i>⛏</i><strong>采集资源</strong><small>己方地块取材</small></button><button class="action" data-action="build"><i>⌂</i><strong>建造设施</strong><small>发展生产引擎</small></button><button class="action" data-action="expand"><i>⚑</i><strong>扩张领土</strong><small>向相邻地块推进</small></button><button class="action" data-action="council"><i>✧</i><strong>议会提案</strong><small>知识与金币换影响力</small></button></div><div class="build-menu hidden" id="build-menu"><label for="building-type">选择建造</label><select id="building-type"><option value="lumber">林场 · 2木+1金币 → 每轮产木</option><option value="quarry">采石场 · 1木+2石 → 每轮产石</option><option value="farm">共生农庄 · 1木+1食 → 产食并修复生态</option><option value="archive">潮汐档案馆 · 1石+1知+1金 → 每轮产知识</option><option value="fort">守望堡 · 1木+1石+2金 → 防御并增声望</option><option value="monument">群岛纪念碑 · 2木+2石+2金 → 立即获得3影响力</option></select><button id="confirm-build">在所选地块建造</button></div></div><div class="log"><div class="log-title">拓荒纪事 <small>最近事件</small></div><div id="log-list"></div></div></section>
+<aside class="player-panel right"><div class="player-head"><div class="avatar coral">B</div><div><strong id="player-name-1">拓荒者B</strong><small>珊瑚议会</small></div><span class="turn" id="turn-1">待命</span></div><div class="resources"><div><i>●</i>金币<strong id="coins-1">0</strong></div><div><i>♧</i>木材<strong id="wood-1">0</strong></div><div><i>⬟</i>石料<strong id="stone-1">0</strong></div><div><i>≈</i>食物<strong id="food-1">0</strong></div><div><i>⌘</i>知识<strong id="knowledge-1">0</strong></div></div><h3>发展轨道</h3><div class="track"><span>群岛影响力</span><b id="prestige-1">0 / 12</b><div><i id="prestige-bar-1"></i></div></div><div class="track nature"><span>生态复兴</span><b id="ecology-1">0 / 10</b><div><i id="ecology-bar-1"></i></div></div><div class="track"><span>控制领土</span><b id="territory-1">0 / 9</b><div><i id="territory-bar-1"></i></div></div><div class="engine"><h3>行动牌轮转</h3><div id="action-row-1"></div><small>每类行动各有强度。规划行动顺序，抓住强势时机。</small></div><div class="room-card"><span>房间号</span><b id="room-display">------</b><button id="copy-room">复制并邀请朋友</button></div></aside></section>
+<footer><span>新岸宪章 / 双人领土经营博弈</span><button id="help-open-bottom">查看胜利条件</button></footer></main><div class="toast" id="toast"></div><div class="modal hidden" id="help-modal"><div class="shade"></div><article><button class="close" id="close-help">×</button><p class="kicker">THE NEW SHORE CHARTER</p><h2>开发领地，决定群岛的未来。</h2><section><b>你的回合</b><p>每轮双方各有4次行动。四张行动牌会在个人牌列中轮转，位置越靠后强度越高；使用后移到队尾。轮转行动牌塑造你的经营节奏。</p></section><section><b>采集与建设</b><p>点击己方地块采集其地形资源。建筑只能建在己方空地，会带来每轮资源产出；农庄修复生态，纪念碑带来高额影响力。</p></section><section><b>博弈与扩张</b><p>扩张只能进入相邻地块，消耗金币和食物。敌方地块可以争夺：守望堡需要强度4，对方影响力高时应先发展再进攻。争抢遗址、生产地与通路，切断对手扩张。</p></section><section><b>三种直接获胜路线</b><p>领土霸权：控制9块土地。群岛繁荣：影响力达到12。生态复兴：生态达到10。若8轮仍无人达成，则按影响力、生态与领土综合计分。</p></section><button class="primary" id="close-help-bottom">开始拓荒</button></article></div><div class="modal hidden" id="end-modal"><div class="shade"></div><article><p class="kicker">航程结算</p><h2 id="end-title">新岸的主人</h2><p id="end-copy"></p><button class="primary" id="rematch-button">再开一局 ↻</button></article></div><script src="app.js"></script></body></html>

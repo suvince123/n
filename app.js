@@ -1,114 +1,29 @@
-const lobby = document.querySelector('#lobby');
-const game = document.querySelector('#game');
-const toast = document.querySelector('#toast');
-let socket;
-let roomCode = '';
-let myIndex = -1;
-let gameState = null;
-let toastTimer;
-
-function notify(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const lobby=$('#lobby'),game=$('#game'),toast=$('#toast');
+let socket,roomCode='',myIndex=-1,state=null,selectedTile=null,toastTimer;
+const resourceIcon={wood:'♧',stone:'⬟',food:'≈',knowledge:'⌘'};
+const actionName={gather:'采集资源',build:'建造设施',expand:'扩张领土',council:'议会提案'};
+const buildingIcon={lumber:'♧',quarry:'⬟',farm:'❋',archive:'⌘',fort:'▧',monument:'✧'};
+function notify(t){toast.textContent=t;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2800);}
+function connect(){if(socket?.readyState===WebSocket.OPEN)return Promise.resolve();return new Promise((resolve,reject)=>{const scheme=location.protocol==='https:'?'wss':'ws';socket=new WebSocket(`${scheme}://${location.host}`);socket.onopen=resolve;socket.onerror=()=>reject(new Error('无法连接游戏服务器，请稍后重试。'));socket.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='error')notify(m.message);if(m.type==='state')render(m);};socket.onclose=()=>{if(roomCode)notify('连接中断，请刷新页面后重新加入。');};});}
+function send(m){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(m));}
+async function enter(type){const name=$('#player-name').value.trim()||'拓荒者';const code=$('#room-code').value.trim().toUpperCase();if(type==='join'&&code.length!==6){notify('房间号需要六位字母或数字。');return;}try{await connect();send(type==='create'?{type,name}:{type,name,code});}catch(e){notify(e.message);}}
+$('#create-room').onclick=()=>enter('create');$('#join-room').onclick=()=>enter('join');$('#room-code').oninput=e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');$('#room-code').onkeydown=e=>{if(e.key==='Enter')enter('join');};
+$$('.action').forEach(b=>b.onclick=()=>chooseAction(b.dataset.action));
+function chooseAction(action){if(!state||state.active!==myIndex)return;if(action==='build'){$('#build-menu').classList.toggle('hidden');return;}$('#build-menu').classList.add('hidden');if(action!=='council'&&!selectedTile){notify('先在地图上选一块地。');return;}send({type:'act',action,tileId:selectedTile?.id});}
+$('#confirm-build').onclick=()=>{if(!selectedTile){notify('先选一块自己的空地作为建造地点。');return;}send({type:'act',action:'build',tileId:selectedTile.id,building:$('#building-type').value});$('#build-menu').classList.add('hidden');};
+function render(m){roomCode=m.code;myIndex=m.playerIndex;state=m.state;lobby.classList.add('hidden');game.classList.remove('hidden');$('#room-display').textContent=roomCode;$('#round-label').textContent=state.status==='waiting'?'等待玩家':`第 ${state.round} 轮`;
+  m.players.forEach((p,i)=>{$(`#player-name-${i}`).textContent=p.name;$(`#turn-${i}`).textContent=state.status==='playing'&&state.active===i?'行动中':'待命';});
+  const map=$('#map');map.innerHTML='';state.tiles.forEach(t=>{const el=document.createElement('button');el.className=`tile terrain-${t.resource}${t.owner===null?' neutral':` owner-${t.owner}`}${t.id===selectedTile?.id?' selected':''}`;el.dataset.id=t.id;el.setAttribute('aria-label',`${t.name}${t.owner===null?'，无人占领':`，${state.players[t.owner].name}的领地`}`);el.innerHTML=`<span class="terrain-icon">${resourceIcon[t.resource]}</span><span class="tile-name">${t.name}</span>${t.owner!==null?`<i class="owner-dot p${t.owner}"></i>`:''}${t.building?`<span class="building">${buildingIcon[t.building]}</span>`:''}${t.stored?`<small class="stored">+${t.stored}</small>`:''}`;el.onclick=()=>{selectedTile=t;render(m);};map.append(el);});
+  const mine=state.status==='playing'&&state.active===myIndex;
+  state.players.forEach((p,i)=>{for(const k of ['coins','wood','stone','food','knowledge'])$(`#${k}-${i}`).textContent=p[k];$(`#prestige-${i}`).textContent=`${p.prestige} / 12`;$(`#ecology-${i}`).textContent=`${p.ecology} / 10`;$(`#territory-${i}`).textContent=`${p.territory} / 9`;$(`#prestige-bar-${i}`).style.width=`${Math.min(100,p.prestige/12*100)}%`;$(`#ecology-bar-${i}`).style.width=`${Math.min(100,p.ecology/10*100)}%`;$(`#territory-bar-${i}`).style.width=`${Math.min(100,p.territory/9*100)}%`;$(`#action-row-${i}`).innerHTML=p.actionRow.map((a,j)=>`<span class="action-card ${a}" title="${actionName[a]}：强度${j+1}"><small>${j+1}</small>${actionName[a]}</span>`).join('');});
+  $('#round-number').textContent=state.status==='waiting'?'—':Math.min(state.round,8);$('#board-heading').textContent=state.status==='waiting'?'等待另一位拓荒者':state.status==='finished'?'航程结算':`第 ${state.round} 轮 · 领土开发`;$('#action-turn').textContent=state.status==='waiting'?'等待玩家加入':state.status==='finished'?'本局已结束':mine?'轮到你了':`等待 ${state.players[state.active].name}`;$('#actions-left').textContent=state.status==='playing'?`剩余 ${state.actionsLeft} 次行动`:'';
+  $$('.action').forEach(b=>b.disabled=!mine);$('#confirm-build').disabled=!mine;updateHint();$('#log-list').innerHTML=state.log.slice(0,8).map(x=>`<p>${escapeHtml(x)}</p>`).join('');
+  if(state.status==='finished'&&!$('#end-modal').dataset.shown){$('#end-modal').dataset.shown='yes';$('#end-title').textContent=state.winner===null?'群岛议会 · 势均力敌':`${state.players[state.winner].name}赢得群岛！`;$('#end-copy').textContent=`胜利路线：${state.winReason}。${state.players.map(p=>`${p.name}：影响力 ${p.prestige} · 生态 ${p.ecology} · 领土 ${p.territory}`).join(' | ')}`;$('#end-modal').classList.remove('hidden');}
 }
-function ensureSocket() {
-  if (socket && socket.readyState === WebSocket.OPEN) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-    socket = new WebSocket(`${scheme}://${location.host}`);
-    socket.onopen = resolve;
-    socket.onerror = () => reject(new Error('连不上游戏服务器，请稍后重试。'));
-    socket.onmessage = event => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'error') notify(msg.message);
-      if (msg.type === 'state') render(msg);
-    };
-    socket.onclose = () => { if (roomCode) notify('与房间的连接已断开，刷新页面后重新加入。'); };
-  });
-}
-function send(message) { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); }
-async function enterRoom(type) {
-  const name = document.querySelector('#player-name').value.trim() || '航海家';
-  const code = document.querySelector('#room-code').value.trim().toUpperCase();
-  if (type === 'join' && code.length !== 6) { notify('房间号是 6 位字母或数字。'); return; }
-  try {
-    await ensureSocket();
-    send(type === 'create' ? { type, name } : { type, name, code });
-  } catch (err) { notify(err.message); }
-}
-document.querySelector('#create-room').addEventListener('click', () => enterRoom('create'));
-document.querySelector('#join-room').addEventListener('click', () => enterRoom('join'));
-document.querySelector('#room-code').addEventListener('input', event => { event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
-document.querySelector('#room-code').addEventListener('keydown', event => { if (event.key === 'Enter') enterRoom('join'); });
-document.querySelectorAll('.island-node').forEach(node => node.addEventListener('click', () => {
-  document.querySelectorAll('.island-node').forEach(n => n.classList.toggle('selected', n === node));
-  const selected = gameState?.state.islands.find(i => i.id === node.dataset.island);
-  const msg = selected ? `${selected.name} · 控制者：${selected.owner === null ? '无人' : gameState.players[selected.owner].name} · 船队 ${selected.fleets[0]} : ${selected.fleets[1]} · 灯塔 ${selected.forts[0]} : ${selected.forts[1]}` : '选择一座岛屿，然后部署船队或建造灯塔。';
-  document.querySelector('#island-tooltip').textContent = msg;
-}));
-document.querySelector('#sail-action').addEventListener('click', () => perform('sail'));
-document.querySelector('#fortify-action').addEventListener('click', () => perform('fortify'));
-function perform(action) {
-  const selected = document.querySelector('.island-node.selected');
-  if (!selected) { notify('先在海图上选择一座岛屿。'); return; }
-  send({ type: 'act', action, islandId: selected.dataset.island });
-}
-document.querySelector('#copy-room').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(roomCode); notify('房间号已复制，发给朋友吧！'); }
-  catch { notify(`房间号：${roomCode}`); }
-});
-function render(payload) {
-  roomCode = payload.code;
-  gameState = payload;
-  myIndex = payload.playerIndex;
-  lobby.classList.add('hidden');
-  game.classList.remove('hidden');
-  const s = payload.state;
-  document.querySelector('#room-display').textContent = roomCode;
-  document.querySelector('#round-label').textContent = s.status === 'waiting' ? '等待玩家' : `第 ${s.round} 轮`;
-  document.querySelector('#round-number').textContent = s.status === 'waiting' ? '—' : s.round;
-  document.querySelector('#board-heading').textContent = s.status === 'waiting' ? '等待第二位玩家登船' : s.status === 'finished' ? '航海旅程结束' : `第 ${s.round} 轮 · 群岛争夺战`;
-  payload.players.forEach((p, i) => {
-    document.querySelector(`#player-name-${i}`).textContent = p.name;
-    document.querySelector(`#player-card-${i}`).classList.toggle('active', s.status === 'playing' && s.active === i);
-    document.querySelector(`#turn-${i}`).textContent = s.active === i ? '行动中' : '待命';
-  });
-  if (s.status === 'playing' || s.status === 'finished') s.players.forEach((p, i) => {
-    document.querySelector(`#score-${i}`).textContent = p.score;
-    document.querySelector(`#fleets-${i}`).textContent = p.fleetsLeft;
-    document.querySelector(`#coins-${i}`).textContent = p.coins;
-  });
-  s.islands.forEach(island => {
-    const node = document.querySelector(`[data-island="${island.id}"]`);
-    node.classList.toggle('owner-0', island.owner === 0);
-    node.classList.toggle('owner-1', island.owner === 1);
-    const stack = node.querySelector('.fleet-stack');
-    stack.innerHTML = '';
-    for (let n = 0; n < island.fleets[0]; n++) stack.insertAdjacentHTML('beforeend', '<span class="ship-token p0">✦</span>');
-    for (let n = 0; n < island.fleets[1]; n++) stack.insertAdjacentHTML('beforeend', '<span class="ship-token p1">✦</span>');
-    node.querySelector('.fort-mark').textContent = '⌂'.repeat(island.forts[0]) + '⌂'.repeat(island.forts[1]);
-  });
-  const mine = s.status === 'playing' && s.active === myIndex;
-  document.querySelector('#action-turn').textContent = s.status === 'waiting' ? '等待对手加入' : mine ? '轮到你了' : s.status === 'finished' ? '本局已结束' : `等待 ${s.players[s.active]?.name || '对手'}`;
-  document.querySelector('#actions-left').textContent = s.status === 'playing' ? `剩余 ${s.actionsLeft} 次行动` : '';
-  document.querySelector('#sail-action').disabled = !mine;
-  document.querySelector('#fortify-action').disabled = !mine;
-  const list = document.querySelector('#log-list');
-  list.innerHTML = s.log.slice(0, 10).map(entry => `<div class="log-entry">${escapeHtml(entry)}</div>`).join('');
-  if (s.status === 'finished' && !document.querySelector('#end-modal').dataset.shown) {
-    document.querySelector('#end-modal').dataset.shown = 'yes';
-    document.querySelector('#end-title').textContent = s.winner === null ? '这场航海，势均力敌' : `${s.players[s.winner].name} 赢得群岛议会`;
-    document.querySelector('#end-copy').textContent = `${s.players[0].name} ${s.players[0].score} 分 · ${s.players[1].name} ${s.players[1].score} 分`;
-    document.querySelector('#end-modal').classList.remove('hidden');
-  }
-}
-function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-document.querySelector('#rematch-button').addEventListener('click', () => { document.querySelector('#end-modal').classList.add('hidden'); delete document.querySelector('#end-modal').dataset.shown; send({ type: 'rematch' }); });
-const rules = document.querySelector('#rules-modal');
-document.querySelector('#help-open').addEventListener('click', () => rules.classList.remove('hidden'));
-document.querySelector('#help-open-bottom').addEventListener('click', () => rules.classList.remove('hidden'));
-document.querySelector('#modal-close').addEventListener('click', () => rules.classList.add('hidden'));
-document.querySelector('#modal-close-backdrop').addEventListener('click', () => rules.classList.add('hidden'));
-document.addEventListener('keydown', event => { if (event.key === 'Escape') { rules.classList.add('hidden'); document.querySelector('#end-modal').classList.add('hidden'); } });
+function updateHint(){const title=$('#step-title'),copy=$('#step-copy'),badge=$('#step-badge');if(state.status==='waiting'){title.textContent='等待另一位拓荒者';copy.textContent='把房间号发给朋友，双方到齐后航程自动开始。';badge.textContent='准备中';}else if(state.status==='finished'){title.textContent='航程结束';copy.textContent=`${state.winReason}。点击结果窗口中的按钮可再开一局。`;badge.textContent='已结算';}else if(state.active!==myIndex){title.textContent=`现在是${state.players[state.active].name}的回合`;copy.textContent='观察对方扩张方向，计划下一步资源与行动牌顺序。';badge.textContent='对手行动';}else if(selectedTile){const t=state.tiles.find(q=>q.id===selectedTile.id);title.textContent=`已选：${t.name}${t.owner===myIndex?' · 己方领地':t.owner===null?' · 中立地块':' · 对手领地'}`;copy.textContent=t.owner===myIndex?(t.building?'已有建筑。可采集这里的地形资源。':'可采集地形资源，或花费材料建造生产设施。'):'可尝试扩张占领；敌方堡垒及影响力会提高防守难度。';badge.textContent=`${state.actionsLeft} 次行动`;}else{title.textContent='轮到你：选择一块地，再决定行动';copy.textContent='采集补充材料，建造生产设施，向相邻土地扩张，或用知识和金币换取影响力。';badge.textContent=`${state.actionsLeft} 次行动`;}}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+$('#copy-room').onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);notify('房间号已复制，发给朋友吧！');}catch{notify(`房间号：${roomCode}`);}};
+$('#help-open').onclick=$('#help-open-bottom').onclick=()=>$('#help-modal').classList.remove('hidden');$('#close-help').onclick=$('#close-help-bottom').onclick=()=>$('#help-modal').classList.add('hidden');
+$('#rematch-button').onclick=()=>{$('#end-modal').classList.add('hidden');delete $('#end-modal').dataset.shown;selectedTile=null;send({type:'rematch'});};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#help-modal').classList.add('hidden');$('#end-modal').classList.add('hidden');}});
