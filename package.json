@@ -1,0 +1,12 @@
+{
+  "name": "island-council-boardgame",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small online strategy board game prototype",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
