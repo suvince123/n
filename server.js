@@ -23,6 +23,7 @@ const projectCatalog = [
   {id:'star-atlas',name:'星潮天文台',icon:'✧',cost:{stone:2,knowledge:1,coins:2},description:'立即获得2影响力；每轮产出1知识与1金币。',prestige:2,production:'knowledge-coins'},
   {id:'watch-network',name:'海防灯标网',icon:'⚑',cost:{wood:2,stone:1,coins:2},description:'立即获得1影响力；防御设施须面对强度4的进攻。',prestige:1,production:'fort'}
 ];
+const MAX_ROUNDS=16;
 const charterCatalog = [
   {id:'first-survey',name:'先行测绘',description:'率先控制5块领土',type:'territory',target:5,reward:'影响力 +3'},
   {id:'living-shore',name:'生生海岸',description:'率先修复4点生态',type:'ecology',target:4,reward:'生态 +2'},
@@ -31,25 +32,30 @@ const charterCatalog = [
 ];
 const byId = id => projectCatalog.find(c=>c.id===id);
 function makeTiles() {
-  return terrain.flatMap((row,y) => row.map((resource,x) => ({ id:`${x}-${y}`, x, y, resource, name:tileNames[resource], owner:null, building:null, stored:0 })));
+  const tiles=[];
+  for(let r=-2;r<=2;r++)for(let q=-2;q<=2;q++)if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))<=2){
+    const resource=q===-2?'wood':q===-1?'food':q===2?'knowledge':q===1?'food':['wood','stone','food','knowledge'][((q*11+r*7+31)%4+4)%4];
+    tiles.push({id:`${q},${r}`,q,r,resource,name:tileNames[resource],owner:null,building:null,stored:0});
+  }
+  return tiles;
 }
 function freshRoom(code) {
   const deck=projectCatalog.map(c=>c.id).sort(()=>Math.random()-.5);
-  return { code, projectDeck:deck.slice(3), players:[], state:{status:'waiting',round:1,active:0,actionsLeft:5,players:[],tiles:makeTiles(),projects:deck.slice(0,3),charters:charterCatalog.map(c=>({...c,claimedBy:null})),log:['北方风暴退去，群岛议会签署了《新岸宪章》。等待第二位拓荒者加入。'],winner:null,winReason:''} };
+  return { code, projectDeck:deck.slice(3), players:[], state:{status:'waiting',round:1,active:0,turnCount:0,players:[],tiles:makeTiles(),projects:deck.slice(0,3),charters:charterCatalog.map(c=>({...c,claimedBy:null})),log:['北方风暴退去，群岛议会签署了《新岸宪章》。等待第二位拓荒者加入。'],winner:null,winReason:''} };
 }
 function publicState(room) { return {code:room.code,players:room.players.map(p=>({name:p.name})),state:{...room.state,projects:room.state.projects.map(byId)}}; }
 function send(ws,payload) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
 function broadcast(room) { room.players.forEach((p,playerIndex)=>send(p.ws,{type:'state',...publicState(room),playerIndex})); }
 function log(s,text) { s.log.unshift(text); s.log=s.log.slice(0,24); }
 function start(room) {
-  const starts=[[{x:0,y:0},{x:0,y:1}],[{x:3,y:3},{x:3,y:2}]];
+  const starts=[[{q:-2,r:0},{q:-1,r:0}],[{q:2,r:0},{q:1,r:0}]];
   room.state.status='playing';
   room.state.players=room.players.map((p,i)=>({name:p.name,color:i===0?'teal':'coral',coins:5,wood:2,stone:1,food:2,knowledge:1,prestige:0,ecology:0,score:0,actionRow:['gather','build','expand','project','council'],territory:2}));
-  starts.forEach((tiles,i)=>tiles.forEach(pos=>{const t=room.state.tiles.find(a=>a.x===pos.x&&a.y===pos.y);t.owner=i;}));
+  starts.forEach((tiles,i)=>tiles.forEach(pos=>{const t=room.state.tiles.find(a=>a.q===pos.q&&a.r===pos.r);t.owner=i;}));
   room.state.log=[`《新岸宪章》生效：${room.players[0].name}与${room.players[1].name}各自建立两处前哨。扩张、发展，决定群岛的未来。`];
 }
 function owned(s,idx) { return s.tiles.filter(t=>t.owner===idx); }
-function adjacent(s,t,idx) { return s.tiles.some(n=>n.owner===idx&&Math.abs(n.x-t.x)+Math.abs(n.y-t.y)===1); }
+function adjacent(s,t,idx) { return s.tiles.some(n=>n.owner===idx&&[[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]].some(([dq,dr])=>n.q+dq===t.q&&n.r+dr===t.r)); }
 function checkWinner(s,idx,reason) {
   s.status='finished'; s.winner=idx; s.winReason=reason;
   log(s,`${s.players[idx].name}以「${reason}」路线赢得群岛议会！`);
@@ -83,7 +89,7 @@ function playProject(room,p,idx,data,strength,tile) {
 }
 function act(room,idx,data) {
   const s=room.state;
-  if(s.status!=='playing'||idx!==s.active||s.actionsLeft<1)return '现在还不能行动。';
+  if(s.status!=='playing'||idx!==s.active)return '现在还不能行动。';
   const p=s.players[idx], action=data.action, tile=s.tiles.find(t=>t.id===data.tileId);
   if(!['gather','build','expand','project','council'].includes(action))return '这个行动不存在。';
   const strength=actionStrength(p,action);
@@ -135,17 +141,16 @@ function act(room,idx,data) {
   rotate(p,action);
   claimCharters(s,idx);
   testVictory(s,idx);
-  s.actionsLeft--;
-  if(s.status==='playing'&&s.actionsLeft===0) {
-    s.active=1-s.active;s.actionsLeft=5;
-    if(s.active===0) {
+  if(s.status==='playing'){
+    s.active=1-s.active;s.turnCount++;
+    if(s.turnCount%2===0) {
       s.round++;
-      if(s.round>8) {
+      if(s.round>MAX_ROUNDS) {
         const a=s.players[0],b=s.players[1];
         const score=q=>q.prestige+q.ecology*2+owned(s,s.players.indexOf(q)).length*2+owned(s,s.players.indexOf(q)).filter(t=>t.building).length;
         s.players.forEach(q=>q.score=score(q));
-        s.status='finished';s.winner=s.players[0].score===s.players[1].score?null:(s.players[0].score>s.players[1].score?0:1);s.winReason='八轮终局计分';
-        log(s,s.winner===null?'八轮结束，群岛议会以平局收场。':`${s.players[s.winner].name}以${s.players[s.winner].score}分赢得八轮终局。`);
+        s.status='finished';s.winner=s.players[0].score===s.players[1].score?null:(s.players[0].score>s.players[1].score?0:1);s.winReason=`${MAX_ROUNDS}轮终局计分`;
+        log(s,s.winner===null?`${MAX_ROUNDS}轮结束，群岛议会以平局收场。`:`${s.players[s.winner].name}以${s.players[s.winner].score}分赢得${MAX_ROUNDS}轮终局。`);
       } else {
         s.players.forEach((q,i)=>{
           for(const t of owned(s,i)) {
@@ -167,8 +172,8 @@ function act(room,idx,data) {
           q.coins+=1;
           testVictory(s,i);
         });
-        s.round=Math.min(s.round,8);
-        s.players.forEach((_,i)=>claimCharters(s,i));
+        s.active=1-s.active;
+        s.players.forEach((_,i)=>{claimCharters(s,i);if(s.status==='playing')testVictory(s,i);});
         if(s.status==='playing')log(s,`第${s.round}轮开始：领地设施与群岛项目生产资源，每位玩家获得1金币。`);
       }
     }
