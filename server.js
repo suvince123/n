@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const WebSocket = require('ws');
 const GemEngine = require('./gem-engine');
+const PropertyEngine = require('./property-engine');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 4173);
@@ -46,7 +47,7 @@ function freshRoom(code) {
 }
 function publicState(room) { return {code:room.code,game:'charter',players:room.players.map(p=>({name:p.name})),state:{...room.state,projects:room.state.projects.map(byId)}}; }
 function send(ws,payload) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
-function broadcast(room) { room.players.forEach((p,playerIndex)=>send(p.ws,room.game==='gem'?{type:'state',...GemEngine.publicState(room,playerIndex)}:{type:'state',...publicState(room),playerIndex})); }
+function broadcast(room) { room.players.forEach((p,playerIndex)=>send(p.ws,room.game==='gem'?{type:'state',...GemEngine.publicState(room,playerIndex)}:room.game==='property'?{type:'state',...PropertyEngine.publicState(room,playerIndex)}:{type:'state',...publicState(room),playerIndex})); }
 function log(s,text) { s.log.unshift(text); s.log=s.log.slice(0,24); }
 function start(room) {
   const starts=[[{q:-2,r:0},{q:-1,r:0}],[{q:2,r:0},{q:1,r:0}]];
@@ -187,18 +188,18 @@ gameServer.on('connection',ws=>{
     let msg;try{msg=JSON.parse(raw);}catch{send(ws,{type:'error',message:'请求格式无效。'});return;}
     if(msg.type==='create'||msg.type==='join'){
       let room;
-      if(msg.type==='create'){let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase();}while(rooms.has(code));room=msg.game==='gem'?GemEngine.freshRoom(code):freshRoom(code);rooms.set(code,room);}
+      if(msg.type==='create'){let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase();}while(rooms.has(code));const game=['gem','property'].includes(msg.game)?msg.game:'charter';const seats=game==='property'?Math.max(2,Math.min(4,Math.trunc(Number(msg.maxPlayers)||2))):2;room=game==='gem'?GemEngine.freshRoom(code):game==='property'?PropertyEngine.freshRoom(code,seats):freshRoom(code);rooms.set(code,room);}
       else room=rooms.get(String(msg.code||'').trim().toUpperCase());
       if(!room){send(ws,{type:'error',message:'没有找到这个房间号。'});return;}
-      if(room.players.length>=2){send(ws,{type:'error',message:'这个房间已经坐满了。'});return;}
+      if(room.players.length>=(room.maxPlayers||2)){send(ws,{type:'error',message:'这个房间已经坐满了。'});return;}
       room.players.push({ws,name:String(msg.name||'').trim().slice(0,14)||`拓荒者 ${room.players.length+1}`});
-      if(room.players.length===2){if(room.game==='gem')GemEngine.start(room,room.players.map(p=>p.name));else start(room);}ws.room=room;broadcast(room);return;
+      if(room.players.length===(room.maxPlayers||2)){if(room.game==='gem')GemEngine.start(room,room.players.map(p=>p.name));else if(room.game==='property')PropertyEngine.start(room,room.players.map(p=>p.name));else start(room);}ws.room=room;broadcast(room);return;
     }
     const room=ws.room;if(!room){send(ws,{type:'error',message:'请先创建或加入房间。'});return;}
-    if(msg.type==='act'){const error=room.game==='gem'?GemEngine.act(room,currentPlayer(room,ws),msg):act(room,currentPlayer(room,ws),msg);if(error)send(ws,{type:'error',message:error});else broadcast(room);}
-    if(msg.type==='rematch'&&room.state.status==='finished'&&room.players.length===2){if(room.game==='gem'){const fresh=GemEngine.freshRoom(room.code);room.state=fresh.state;room.catalog=fresh.catalog;room.decks=fresh.decks;GemEngine.start(room,room.players.map(p=>p.name));}else{const fresh=freshRoom(room.code);room.state=fresh.state;room.projectDeck=fresh.projectDeck;start(room);}broadcast(room);}
+    if(msg.type==='act'){const error=room.game==='gem'?GemEngine.act(room,currentPlayer(room,ws),msg):room.game==='property'?PropertyEngine.act(room,currentPlayer(room,ws),msg):act(room,currentPlayer(room,ws),msg);if(error)send(ws,{type:'error',message:error});else broadcast(room);}
+    if(msg.type==='rematch'&&room.state.status==='finished'&&room.players.length===(room.maxPlayers||2)){if(room.game==='gem'){const fresh=GemEngine.freshRoom(room.code);room.state=fresh.state;room.catalog=fresh.catalog;room.decks=fresh.decks;GemEngine.start(room,room.players.map(p=>p.name));}else if(room.game==='property'){const fresh=PropertyEngine.freshRoom(room.code,room.maxPlayers);room.state=fresh.state;PropertyEngine.start(room,room.players.map(p=>p.name));}else{const fresh=freshRoom(room.code);room.state=fresh.state;room.projectDeck=fresh.projectDeck;start(room);}broadcast(room);}
   });
-  ws.on('close',()=>{const room=ws.room;if(!room)return;room.players=room.players.filter(p=>p.ws!==ws);if(!room.players.length)rooms.delete(room.code);else{room.state.status='waiting';room.state.log=[`${room.players[0].name}留在房间中，等待对手重新加入。`];broadcast(room);}});
+  ws.on('close',()=>{const room=ws.room;if(!room)return;room.players=room.players.filter(p=>p.ws!==ws);if(!room.players.length)rooms.delete(room.code);else{if(room.game==='property'){const fresh=PropertyEngine.freshRoom(room.code,room.maxPlayers);room.state=fresh.state;}else{room.state.status='waiting';room.state.log=[`${room.players[0].name}留在房间中，等待对手重新加入。`];}broadcast(room);}});
 });
 function currentPlayer(room,ws){return room.players.findIndex(p=>p.ws===ws);}
 const server=http.createServer((req,res)=>{

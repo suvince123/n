@@ -4,7 +4,8 @@
   "private": true,
   "description": "A small online strategy board game prototype",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node scripts/property-tests.js"
   },
   "dependencies": {
     "ws": "^8.18.3"
