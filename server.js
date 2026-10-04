@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const WebSocket = require('ws');
+const GemEngine = require('./gem-engine');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 4173);
@@ -41,11 +42,11 @@ function makeTiles() {
 }
 function freshRoom(code) {
   const deck=projectCatalog.map(c=>c.id).sort(()=>Math.random()-.5);
-  return { code, projectDeck:deck.slice(3), players:[], state:{status:'waiting',round:1,active:0,turnCount:0,players:[],tiles:makeTiles(),projects:deck.slice(0,3),charters:charterCatalog.map(c=>({...c,claimedBy:null})),log:['北方风暴退去，群岛议会签署了《新岸宪章》。等待第二位拓荒者加入。'],winner:null,winReason:''} };
+  return { code, game:'charter', projectDeck:deck.slice(3), players:[], state:{status:'waiting',round:1,active:0,turnCount:0,players:[],tiles:makeTiles(),projects:deck.slice(0,3),charters:charterCatalog.map(c=>({...c,claimedBy:null})),log:['北方风暴退去，群岛议会签署了《新岸宪章》。等待第二位航海者加入。'],winner:null,winReason:''} };
 }
-function publicState(room) { return {code:room.code,players:room.players.map(p=>({name:p.name})),state:{...room.state,projects:room.state.projects.map(byId)}}; }
+function publicState(room) { return {code:room.code,game:'charter',players:room.players.map(p=>({name:p.name})),state:{...room.state,projects:room.state.projects.map(byId)}}; }
 function send(ws,payload) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
-function broadcast(room) { room.players.forEach((p,playerIndex)=>send(p.ws,{type:'state',...publicState(room),playerIndex})); }
+function broadcast(room) { room.players.forEach((p,playerIndex)=>send(p.ws,room.game==='gem'?{type:'state',...GemEngine.publicState(room,playerIndex)}:{type:'state',...publicState(room),playerIndex})); }
 function log(s,text) { s.log.unshift(text); s.log=s.log.slice(0,24); }
 function start(room) {
   const starts=[[{q:-2,r:0},{q:-1,r:0}],[{q:2,r:0},{q:1,r:0}]];
@@ -186,16 +187,16 @@ gameServer.on('connection',ws=>{
     let msg;try{msg=JSON.parse(raw);}catch{send(ws,{type:'error',message:'请求格式无效。'});return;}
     if(msg.type==='create'||msg.type==='join'){
       let room;
-      if(msg.type==='create'){let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase();}while(rooms.has(code));room=freshRoom(code);rooms.set(code,room);}
+      if(msg.type==='create'){let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase();}while(rooms.has(code));room=msg.game==='gem'?GemEngine.freshRoom(code):freshRoom(code);rooms.set(code,room);}
       else room=rooms.get(String(msg.code||'').trim().toUpperCase());
       if(!room){send(ws,{type:'error',message:'没有找到这个房间号。'});return;}
       if(room.players.length>=2){send(ws,{type:'error',message:'这个房间已经坐满了。'});return;}
       room.players.push({ws,name:String(msg.name||'').trim().slice(0,14)||`拓荒者 ${room.players.length+1}`});
-      if(room.players.length===2)start(room);ws.room=room;broadcast(room);return;
+      if(room.players.length===2){if(room.game==='gem')GemEngine.start(room,room.players.map(p=>p.name));else start(room);}ws.room=room;broadcast(room);return;
     }
     const room=ws.room;if(!room){send(ws,{type:'error',message:'请先创建或加入房间。'});return;}
-    if(msg.type==='act'){const error=act(room,currentPlayer(room,ws),msg);if(error)send(ws,{type:'error',message:error});else broadcast(room);}
-    if(msg.type==='rematch'&&room.state.status==='finished'&&room.players.length===2){const fresh=freshRoom(room.code);room.state=fresh.state;room.projectDeck=fresh.projectDeck;start(room);broadcast(room);}
+    if(msg.type==='act'){const error=room.game==='gem'?GemEngine.act(room,currentPlayer(room,ws),msg):act(room,currentPlayer(room,ws),msg);if(error)send(ws,{type:'error',message:error});else broadcast(room);}
+    if(msg.type==='rematch'&&room.state.status==='finished'&&room.players.length===2){if(room.game==='gem'){const fresh=GemEngine.freshRoom(room.code);room.state=fresh.state;room.catalog=fresh.catalog;room.decks=fresh.decks;GemEngine.start(room,room.players.map(p=>p.name));}else{const fresh=freshRoom(room.code);room.state=fresh.state;room.projectDeck=fresh.projectDeck;start(room);}broadcast(room);}
   });
   ws.on('close',()=>{const room=ws.room;if(!room)return;room.players=room.players.filter(p=>p.ws!==ws);if(!room.players.length)rooms.delete(room.code);else{room.state.status='waiting';room.state.log=[`${room.players[0].name}留在房间中，等待对手重新加入。`];broadcast(room);}});
 });
